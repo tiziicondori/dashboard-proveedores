@@ -4,7 +4,7 @@ import streamlit as st
 st.title("Dashboard de Proveedores")
 
 # Cargar datos (después lo conectamos a Drive)
-df = pd.read_csv("datos.csv")
+df = pd.read_excel("comparativa de precios.xlsx")
 
 # Crear diferencia
 df["diferencia"] = df["precio_inicial"] - df["precio_final"]
