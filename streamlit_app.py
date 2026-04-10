@@ -8,19 +8,25 @@ st.title("📊 Dashboard de Comparativa de Precios")
 # Cargar archivo
 df = pd.read_excel("comparativa de precios.xlsx")
 
-# Limpiar nombres de columnas (saca espacios ocultos)
-df.columns = df.columns.str.strip()
+# Limpiar nombres de columnas
+df.columns = df.columns.str.strip().str.lower()
 
-# Mostrar columnas (para verificar nombres reales)
-st.write("Columnas detectadas:", df.columns)
+# 🔥 LIMPIAR NUMEROS (CLAVE)
+def limpiar_numero(col):
+    return (
+        col.astype(str)
+        .str.replace("$", "", regex=False)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+        .str.strip()
+        .astype(float)
+    )
 
-# ⚠️ Ajuste automático de nombres (por si cambian)
-# Convertimos todo a minúsculas para trabajar más fácil
-df.columns = df.columns.str.lower()
+df["precio inicial"] = limpiar_numero(df["precio inicial"])
+df["precio final"] = limpiar_numero(df["precio final"])
 
-# Crear diferencia automáticamente
-if "diferencia" not in df.columns:
-    df["diferencia"] = df["precio inicial"] - df["precio final"]
+# Crear diferencia
+df["diferencia"] = df["precio inicial"] - df["precio final"]
 
 # FILTROS
 st.sidebar.header("Filtros")
@@ -44,7 +50,7 @@ if secretaria != "todas":
 if direccion != "todas":
     df_filtrado = df_filtrado[df_filtrado["dir. o sub. sec."] == direccion]
 
-# AGRUPACIÓN (tipo tabla dinámica)
+# AGRUPACIÓN
 resumen = df_filtrado.groupby("proveedores").agg({
     "precio inicial": "sum",
     "precio final": "sum",
