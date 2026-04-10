@@ -11,15 +11,15 @@ df = pd.read_excel("comparativa de precios.xlsx")
 # Limpiar nombres de columnas
 df.columns = df.columns.str.strip().str.lower()
 
-# 🔥 LIMPIAR NUMEROS (CLAVE)
 def limpiar_numero(col):
-    return (
+    return pd.to_numeric(
         col.astype(str)
         .str.replace("$", "", regex=False)
         .str.replace(".", "", regex=False)
         .str.replace(",", ".", regex=False)
-        .str.strip()
-        .astype(float)
+        .str.replace("-", "", regex=False)
+        .str.strip(),
+        errors="coerce"  # 🔥 esto evita que rompa
     )
 
 df["precio inicial"] = limpiar_numero(df["precio inicial"])
