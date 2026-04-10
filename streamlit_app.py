@@ -7,7 +7,7 @@ st.title("Dashboard de Proveedores")
 df = pd.read_excel("comparativa de precios.xlsx")
 
 # Crear diferencia
-df["diferencia"] = df["precio_inicial"] - df["precio_final"]
+df["Diferencia"] = df["Precio Inicial"] - df["Precio Final"]
 
 # Filtro por secretaría
 secretaria = st.selectbox("Seleccionar Secretaría", df["secretaria"].unique())
