@@ -1,27 +1,75 @@
-ValueError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/dashboard-proveedores/streamlit_app.py", line 25, in <module>
-    df["precio inicial"] = limpiar_numero(df["precio inicial"])
-                           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
-File "/mount/src/dashboard-proveedores/streamlit_app.py", line 22, in limpiar_numero
-    .astype(float)
-     ~~~~~~^^^^^^^
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/generic.py", line 6541, in astype
-    new_data = self._mgr.astype(dtype=dtype, errors=errors)
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/internals/managers.py", line 611, in astype
-    return self.apply("astype", dtype=dtype, errors=errors)
-           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/internals/managers.py", line 442, in apply
-    applied = getattr(b, f)(**kwargs)
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/internals/blocks.py", line 607, in astype
-    new_values = astype_array_safe(values, dtype, errors=errors)
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/dtypes/astype.py", line 240, in astype_array_safe
-    new_values = astype_array(values, dtype, copy=copy)
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/dtypes/astype.py", line 182, in astype_array
-    values = values.astype(dtype, copy=copy)
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/arrays/string_arrow.py", line 334, in astype
-    return self.to_numpy(dtype=dtype, na_value=np.nan)
-           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-File "/home/adminuser/venv/lib/python3.14/site-packages/pandas/core/arrays/arrow/array.py", line 1730, in to_numpy
-    result[~mask] = data[~mask]._pa_array.to_numpy()
-    ~~~~~~^^^^^^^
+import pandas as pd
+import streamlit as st
+
+st.set_page_config(page_title="Dashboard de Proveedores", layout="wide")
+
+st.title("📊 Dashboard de Comparativa de Precios")
+
+# Cargar archivo
+df = pd.read_excel("comparativa de precios.xlsx")
+
+# Limpiar nombres de columnas
+df.columns = df.columns.str.strip().str.lower()
+
+# 🔥 LIMPIAR NUMEROS (CLAVE)
+def limpiar_numero(col):
+    return (
+        col.astype(str)
+        .str.replace("$", "", regex=False)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+        .str.strip()
+        .astype(float)
+    )
+
+df["precio inicial"] = limpiar_numero(df["precio inicial"])
+df["precio final"] = limpiar_numero(df["precio final"])
+
+# Crear diferencia
+df["diferencia"] = df["precio inicial"] - df["precio final"]
+
+# FILTROS
+st.sidebar.header("Filtros")
+
+secretaria = st.sidebar.selectbox(
+    "Secretaría",
+    ["todas"] + list(df["secretaria"].dropna().unique())
+)
+
+direccion = st.sidebar.selectbox(
+    "Dirección / Subsecretaría",
+    ["todas"] + list(df["dir. o sub. sec."].dropna().unique())
+)
+
+# Aplicar filtros
+df_filtrado = df.copy()
+
+if secretaria != "todas":
+    df_filtrado = df_filtrado[df_filtrado["secretaria"] == secretaria]
+
+if direccion != "todas":
+    df_filtrado = df_filtrado[df_filtrado["dir. o sub. sec."] == direccion]
+
+# AGRUPACIÓN
+resumen = df_filtrado.groupby("proveedores").agg({
+    "precio inicial": "sum",
+    "precio final": "sum",
+    "diferencia": "sum"
+}).reset_index()
+
+# KPIs
+col1, col2, col3 = st.columns(3)
+
+col1.metric("💰 Total Inicial", f"${resumen['precio inicial'].sum():,.0f}")
+col2.metric("💸 Total Final", f"${resumen['precio final'].sum():,.0f}")
+col3.metric("📉 Ahorro Total", f"${resumen['diferencia'].sum():,.0f}")
+
+st.divider()
+
+# TABLA
+st.subheader("📋 Resumen por Proveedor")
+st.dataframe(resumen, use_container_width=True)
+
+# GRÁFICO
+st.subheader("📊 Diferencia por Proveedor")
+st.bar_chart(resumen.set_index("proveedores")["diferencia"])
