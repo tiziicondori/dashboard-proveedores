@@ -1,26 +1,69 @@
 import pandas as pd
 import streamlit as st
 
-st.title("Dashboard de Proveedores")
+st.set_page_config(page_title="Dashboard de Proveedores", layout="wide")
 
-# 1️⃣ PRIMERO cargar el archivo
+st.title("📊 Dashboard de Comparativa de Precios")
+
+# Cargar archivo
 df = pd.read_excel("comparativa de precios.xlsx")
 
-# 2️⃣ DESPUÉS limpiar columnas
+# Limpiar nombres de columnas (saca espacios ocultos)
 df.columns = df.columns.str.strip()
 
-# 3️⃣ Mostrar columnas (debug)
+# Mostrar columnas (para verificar nombres reales)
 st.write("Columnas detectadas:", df.columns)
-# Crear diferencia
-df["Diferencia"] = df["Precio Inicial"] - df["Precio Final"]
 
-# Filtro por secretaría
-secretaria = st.selectbox("Seleccionar Secretaría", df["secretaria"].unique())
-df_filtrado = df[df["secretaria"] == secretaria]
+# ⚠️ Ajuste automático de nombres (por si cambian)
+# Convertimos todo a minúsculas para trabajar más fácil
+df.columns = df.columns.str.lower()
 
-# Agrupar (tipo tabla dinámica)
-resumen = df_filtrado.groupby("proveedor").sum(numeric_only=True)
+# Crear diferencia automáticamente
+if "diferencia" not in df.columns:
+    df["diferencia"] = df["precio inicial"] - df["precio final"]
 
-st.dataframe(resumen)
+# FILTROS
+st.sidebar.header("Filtros")
 
-st.bar_chart(resumen["diferencia"])
+secretaria = st.sidebar.selectbox(
+    "Secretaría",
+    ["todas"] + list(df["secretaria"].dropna().unique())
+)
+
+direccion = st.sidebar.selectbox(
+    "Dirección / Subsecretaría",
+    ["todas"] + list(df["dir. o sub. sec."].dropna().unique())
+)
+
+# Aplicar filtros
+df_filtrado = df.copy()
+
+if secretaria != "todas":
+    df_filtrado = df_filtrado[df_filtrado["secretaria"] == secretaria]
+
+if direccion != "todas":
+    df_filtrado = df_filtrado[df_filtrado["dir. o sub. sec."] == direccion]
+
+# AGRUPACIÓN (tipo tabla dinámica)
+resumen = df_filtrado.groupby("proveedores").agg({
+    "precio inicial": "sum",
+    "precio final": "sum",
+    "diferencia": "sum"
+}).reset_index()
+
+# KPIs
+col1, col2, col3 = st.columns(3)
+
+col1.metric("💰 Total Inicial", f"${resumen['precio inicial'].sum():,.0f}")
+col2.metric("💸 Total Final", f"${resumen['precio final'].sum():,.0f}")
+col3.metric("📉 Ahorro Total", f"${resumen['diferencia'].sum():,.0f}")
+
+st.divider()
+
+# TABLA
+st.subheader("📋 Resumen por Proveedor")
+st.dataframe(resumen, use_container_width=True)
+
+# GRÁFICO
+st.subheader("📊 Diferencia por Proveedor")
+st.bar_chart(resumen.set_index("proveedores")["diferencia"])
