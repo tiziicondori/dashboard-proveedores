@@ -3,13 +3,14 @@ import streamlit as st
 
 st.title("Dashboard de Proveedores")
 
-# Cargar datos (después lo conectamos a Drive)
-# Limpiar nombres de columnas
+# 1️⃣ PRIMERO cargar el archivo
+df = pd.read_excel("comparativa de precios.xlsx")
+
+# 2️⃣ DESPUÉS limpiar columnas
 df.columns = df.columns.str.strip()
 
-# Mostrar columnas para debug
+# 3️⃣ Mostrar columnas (debug)
 st.write("Columnas detectadas:", df.columns)
-
 # Crear diferencia
 df["Diferencia"] = df["Precio Inicial"] - df["Precio Final"]
 
